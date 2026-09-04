@@ -482,9 +482,19 @@ void notify_successful_load(void)
 	FILETIME CreationTime, ExitTime, KernelTime, UserTime;
 	ULARGE_INTEGER CreationIdentity;
 	if (GetProcessTimes(GetCurrentProcess(), &CreationTime, &ExitTime, &KernelTime, &UserTime)) {
+		char Identity[21];
+		int Length;
 		CreationIdentity.LowPart = CreationTime.dwLowDateTime;
 		CreationIdentity.HighPart = CreationTime.dwHighDateTime;
-		pipe("LOADED:%d,i:%llu", GetCurrentProcessId(), (unsigned long long)CreationIdentity.QuadPart);
+		Length = snprintf(Identity, sizeof(Identity), "%llu", (unsigned long long)CreationIdentity.QuadPart);
+		if (Length > 0 && (size_t)Length < sizeof(Identity)) {
+			// pipe() has a deliberately small custom formatter; %z passes a
+			// preformatted NUL-terminated ASCII string through unchanged.
+			pipe("LOADED:%d,i:%z", GetCurrentProcessId(), Identity);
+		}
+		else {
+			pipe("LOADED:%d", GetCurrentProcessId());
+		}
 	}
 	else {
 		pipe("LOADED:%d", GetCurrentProcessId());
