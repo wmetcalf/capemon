@@ -477,8 +477,18 @@ next:
 
 void notify_successful_load(void)
 {
-	// notify analyzer.py that we've loaded
-	pipe("LOADED:%d", GetCurrentProcessId());
+	// Bind the acknowledgement to this process instance so the analyzer can
+	// reject a delayed message after Windows reuses the numeric PID.
+	FILETIME CreationTime, ExitTime, KernelTime, UserTime;
+	ULARGE_INTEGER CreationIdentity;
+	if (GetProcessTimes(GetCurrentProcess(), &CreationTime, &ExitTime, &KernelTime, &UserTime)) {
+		CreationIdentity.LowPart = CreationTime.dwLowDateTime;
+		CreationIdentity.HighPart = CreationTime.dwHighDateTime;
+		pipe("LOADED:%d,i:%llu", GetCurrentProcessId(), (unsigned long long)CreationIdentity.QuadPart);
+	}
+	else {
+		pipe("LOADED:%d", GetCurrentProcessId());
+	}
 }
 
 void get_our_process_path(void)
