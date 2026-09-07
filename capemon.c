@@ -477,10 +477,18 @@ next:
 
 void notify_successful_load(void)
 {
-	// Bind the acknowledgement to this process instance so the analyzer can
-	// reject a delayed message after Windows reuses the numeric PID.
 	FILETIME CreationTime, ExitTime, KernelTime, UserTime;
 	ULARGE_INTEGER CreationIdentity;
+
+	// Old analyzers only accept LOADED:<pid>. Preserve that protocol unless
+	// the monitor config explicitly advertises tagged-identity support.
+	if (!g_config.loaded_process_identity) {
+		pipe("LOADED:%d", GetCurrentProcessId());
+		return;
+	}
+
+	// Bind the acknowledgement to this process instance so the analyzer can
+	// reject a delayed message after Windows reuses the numeric PID.
 	if (GetProcessTimes(GetCurrentProcess(), &CreationTime, &ExitTime, &KernelTime, &UserTime)) {
 		char Identity[21];
 		int Length;
